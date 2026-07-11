@@ -158,6 +158,15 @@ def index() -> None:
         start_job()
         body.refresh()
 
+    def on_reset() -> None:
+        """Back to a pristine setup card: clear shared state AND this page's widgets."""
+        reset_to_setup()
+        folder_input.value = ""
+        scan_label.text = ""
+        start_btn.text = "Start transcription"
+        start_btn.disable()
+        body.refresh()
+
     with ui.column().classes("w-full max-w-3xl mx-auto p-4 gap-4"):
         ui.label("LocalScribe").classes("text-2xl font-bold")
         ui.label("Transcribe every audio/video file in a folder — on this computer, "
@@ -221,8 +230,11 @@ def index() -> None:
                 elif job.phase == "paused_disk_full":
                     ui.label("Your disk is full — free some space, then press "
                              "Resume.").classes("text-negative text-lg")
-                    ui.button("Resume", on_click=job.resume_event.set) \
-                        .props("color=primary")
+                    with ui.row():
+                        ui.button("Resume", on_click=job.resume_event.set) \
+                            .props("color=primary")
+                        ui.button("Stop transcription", on_click=request_cancel) \
+                            .props("flat color=negative")
                 else:
                     running = [fs for fs in job.files if fs.status == "running"]
                     name = running[0].task.path.name if running else ""
@@ -282,8 +294,7 @@ def index() -> None:
                     if job.folder:
                         ui.button("Open output folder",
                                   on_click=lambda: open_folder(job.folder / "transcripts"))
-                    ui.button("Transcribe another folder",
-                              on_click=lambda: (reset_to_setup(), body.refresh())) \
+                    ui.button("Transcribe another folder", on_click=on_reset) \
                         .props("flat")
 
         body()
