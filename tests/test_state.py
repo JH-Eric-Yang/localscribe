@@ -72,6 +72,28 @@ def test_persists_and_survives_corruption(tmp_path, task):
     assert Manifest(tmp_path).should_skip(task, "verbatim", "small") is False  # no crash
 
 
+@pytest.mark.parametrize("root", ["null", "[]", '"x"'])
+def test_no_crash_on_non_dict_manifest_root(tmp_path, task, root):
+    manifest_path = tmp_path / "transcripts" / ".localscribe" / "state.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(root, encoding="utf-8")
+    assert Manifest(tmp_path).should_skip(task, "verbatim", "small") is False
+
+
+def test_no_skip_when_done_entry_has_empty_outputs(tmp_path, task):
+    manifest_path = tmp_path / "transcripts" / ".localscribe" / "state.json"
+    manifest_path.parent.mkdir(parents=True)
+    entry = {
+        task.path.name: {
+            "size": task.size, "mtime": task.mtime,
+            "mode": "verbatim", "model": "small",
+            "status": "done", "outputs": [], "error": None,
+        }
+    }
+    manifest_path.write_text(json.dumps(entry), encoding="utf-8")
+    assert Manifest(tmp_path).should_skip(task, "verbatim", "small") is False
+
+
 def test_jobstate_defaults():
     job = JobState()
     assert job.phase == "idle"

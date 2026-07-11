@@ -43,9 +43,10 @@ class Manifest:
         self.data: dict = {}
         if self.path.exists():
             try:
-                self.data = json.loads(self.path.read_text(encoding="utf-8"))
+                loaded = json.loads(self.path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
-                self.data = {}
+                loaded = {}
+            self.data = loaded if isinstance(loaded, dict) else {}
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,7 +62,8 @@ class Manifest:
             return False
         if entry.get("mode") != mode or entry.get("model") != model:
             return False
-        return all(Path(p).exists() for p in entry.get("outputs", []))
+        outputs = entry.get("outputs") or []
+        return bool(outputs) and all(Path(p).exists() for p in outputs)
 
     def _record(self, task: FileTask, mode: str, model: str, **extra) -> None:
         self.data[task.path.name] = {
