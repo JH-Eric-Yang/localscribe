@@ -10,7 +10,21 @@ The full approved design is in `docs/superpowers/specs/2026-07-11-localscribe-de
 
 ## Current State
 
-Design approved, implementation not started. Replace this section with real build/run/test commands as the project takes shape.
+Implemented. Common commands:
+
+- Run all tests: `uv run pytest`
+- Run one test: `uv run pytest tests/test_worker.py::test_failure_is_isolated -v`
+- Slow integration tests (downloads real tiny model): `uv run pytest -m slow`
+- Run the app (dev): `uv run python -m app.main`
+- End users launch via `Start Transcriber.command` / `Start Transcriber.bat`
+- After changing deps in pyproject.toml: `uv lock && uv sync` (never edit uv.lock by hand)
+
+Architecture: launchers bootstrap uv/Python/deps into gitignored `.managed/`;
+`app/main.py` (single-instance, port probe) → `app/ui.py` (NiceGUI page, JobState
+polling) → `app/worker.py` (one thread, per-file isolation) → `app/engine.py`
+(faster-whisper sequential API, verbatim = initial_prompt + hotwords) →
+`app/writers.py` (atomic srt/vtt/csv/json). Resume manifest: `app/state.py` →
+`<folder>/transcripts/.localscribe/state.json`.
 
 ## Design Constraints
 
