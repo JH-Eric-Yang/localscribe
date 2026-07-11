@@ -1,0 +1,4 @@
+.managed/
+.venv/
+__pycache__/
+*.pyc
