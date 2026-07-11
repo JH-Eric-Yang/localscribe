@@ -1,6 +1,8 @@
+from pathlib import Path
+
 import pytest
 
-from app.discovery import MEDIA_EXTENSIONS, FileTask, scan_folder
+from app.discovery import MEDIA_EXTENSIONS, FileTask, probe_duration, scan_folder
 
 
 def fake_probe(path):
@@ -32,3 +34,29 @@ def test_scan_folder(folder):
 def test_whitelist_covers_spec():
     for ext in [".mp3", ".wav", ".m4a", ".mp4", ".mov", ".mkv", ".webm", ".opus"]:
         assert ext in MEDIA_EXTENSIONS
+
+
+class _FakeContainer:
+    def __init__(self, duration):
+        self.duration = duration
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def test_probe_duration_converts_time_base(monkeypatch):
+    import av
+
+    monkeypatch.setattr(av, "open", lambda p: _FakeContainer(5 * av.time_base))
+    assert probe_duration(Path("x.mp3")) == 5.0
+
+
+def test_probe_duration_rejects_missing_duration(monkeypatch):
+    import av
+
+    monkeypatch.setattr(av, "open", lambda p: _FakeContainer(None))
+    with pytest.raises(ValueError, match="no duration"):
+        probe_duration(Path("x.mp3"))
