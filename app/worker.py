@@ -66,6 +66,9 @@ def _process_with_disk_full_pause(job, fs: FileStatus, model, out_dir, manifest,
                 job.phase = "paused_disk_full"
                 job.resume_event.wait()
                 job.phase = "transcribing"
+                if job.cancel_requested:
+                    fs.status = "skipped"
+                    return
                 continue  # retry the same file
             _fail(job, fs, manifest, exc)
             return

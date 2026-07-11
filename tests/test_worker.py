@@ -18,6 +18,7 @@ class FakeEngine:
         self.fail_names = set(fail_names)
         self.enospc_names = set(enospc_names)
         self.enospc_thrown = set()
+        self.transcribe_calls = []
 
     def ensure_model(self, size, progress_cb=None):
         if progress_cb:
@@ -31,6 +32,7 @@ class FakeEngine:
         return "int8"
 
     def transcribe_file(self, model, path, mode):
+        self.transcribe_calls.append(path.name)
         if path.name in self.fail_names:
             raise ValueError("Invalid data found when processing input")
         if path.name in self.enospc_names and path.name not in self.enospc_thrown:
@@ -115,3 +117,22 @@ def test_disk_full_pauses_then_resumes(tmp_path):
     t.join(timeout=5)
     assert job.phase == "done"
     assert job.files[0].status == "done"
+
+
+def test_cancel_during_disk_full_pause_skips_without_retry(tmp_path):
+    job = make_job(tmp_path, ["a.mp3"])
+    eng = FakeEngine(enospc_names={"a.mp3"})
+    t = threading.Thread(target=run_job, args=(job, Manifest(tmp_path)),
+                         kwargs={"eng": eng}, daemon=True)
+    t.start()
+    deadline = time.monotonic() + 5
+    while job.phase != "paused_disk_full":
+        assert time.monotonic() < deadline, f"never paused (phase={job.phase})"
+        time.sleep(0.01)
+    job.cancel_requested = True
+    job.resume_event.set()
+    t.join(timeout=5)
+    assert job.phase == "done"
+    assert job.files[0].status == "skipped"
+    assert eng.transcribe_calls.count("a.mp3") == 1  # not retried
+    assert not (tmp_path / "transcripts" / "a.mp3.srt").exists()
