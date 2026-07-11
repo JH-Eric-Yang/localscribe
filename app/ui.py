@@ -151,8 +151,12 @@ def index() -> None:
         scan_label.text = ", ".join(parts) + "."
         pending = len(current_scan.tasks) - (0 if job_redo_flag["redo"] else n_skip)
         start_btn.set_enabled(pending > 0)
-        start_btn.text = ("Start transcription" if pending
-                          else "Nothing to do — all files already transcribed")
+        if pending:
+            start_btn.text = "Start transcription"
+        elif not current_scan.tasks:
+            start_btn.text = "No audio/video files found in this folder"
+        else:
+            start_btn.text = "Nothing to do — all files already transcribed"
 
     def on_start() -> None:
         start_job()

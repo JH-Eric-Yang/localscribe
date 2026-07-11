@@ -94,6 +94,18 @@ def test_no_skip_when_done_entry_has_empty_outputs(tmp_path, task):
     assert Manifest(tmp_path).should_skip(task, "verbatim", "small") is False
 
 
+def test_survives_folder_rename(tmp_path, task):
+    """Manifest must store output filenames (not absolute paths), so renaming or
+    moving the transcribed folder does not void all resume state."""
+    m = Manifest(tmp_path)
+    m.mark_done(task, "verbatim", "small", make_outputs(tmp_path))
+    moved = tmp_path.parent / "moved_folder"
+    tmp_path.rename(moved)
+    moved_task = FileTask(path=moved / task.path.name, size=task.size,
+                          mtime=task.mtime, duration=60.0)
+    assert Manifest(moved).should_skip(moved_task, "verbatim", "small") is True
+
+
 def test_jobstate_defaults():
     job = JobState()
     assert job.phase == "idle"

@@ -69,7 +69,11 @@ def _progress_tqdm(progress_cb):
     class UITqdm(base_tqdm):
         def update(self, n=1):
             super().update(n)
-            if progress_cb and self.total:
+            # huggingface_hub drives several tqdm bars during a download: one
+            # per file (unit="it", a file count) and byte-unit bars (unit="B")
+            # for the actual transfer. Only the byte bars make a sane MB/MB
+            # progress readout in the UI.
+            if progress_cb and self.total and getattr(self, "unit", "") == "B":
                 progress_cb(self.n, self.total)
     return UITqdm
 

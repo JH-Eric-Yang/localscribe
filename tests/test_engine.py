@@ -1,8 +1,11 @@
+import io
+
 import pytest
 
 from app.engine import (MODEL_REPOS, VERBATIM_PROMPT, ModelDownloadError,
-                        ensure_model, hotwords_injected_per_window,
-                        segment_to_dict, transcribe_kwargs)
+                        _progress_tqdm, ensure_model,
+                        hotwords_injected_per_window, segment_to_dict,
+                        transcribe_kwargs)
 
 
 def test_verbatim_prompt_shape():
@@ -73,6 +76,27 @@ def test_ensure_model_gives_up():
     with pytest.raises(ModelDownloadError) as exc_info:
         ensure_model("small", download=always_fails, sleep=lambda s: None)
     assert "internet" in str(exc_info.value).lower()
+
+
+def test_progress_callback_only_fires_for_byte_bars():
+    """huggingface_hub drives both byte-unit download bars and a file-count
+    bar through the same tqdm_class; only the byte bars should reach the UI
+    callback, or download progress mixes bytes with a file count."""
+    calls = []
+
+    def cb(done, total):
+        calls.append((done, total))
+
+    UITqdm = _progress_tqdm(cb)
+    quiet = io.StringIO()  # keep tqdm from writing a progress bar to stderr
+
+    byte_bar = UITqdm(total=1000, unit="B", file=quiet)
+    byte_bar.update(500)
+
+    file_count_bar = UITqdm(total=3, unit="it", file=quiet)
+    file_count_bar.update(1)
+
+    assert calls == [(500, 1000)]
 
 
 def test_segment_to_dict():

@@ -1,12 +1,13 @@
 """The job loop: one worker thread, per-file isolation, disk-full pause, manifest updates."""
 import errno
 import logging
+import os
 import time
 from datetime import datetime, timezone
 
 from app import APP_VERSION
 from app import engine as default_engine
-from app.diagnostics import categorize_error
+from app.diagnostics import categorize_error, log_run_header
 from app.state import FileStatus, JobState, Manifest
 from app.writers import write_outputs
 
@@ -24,7 +25,10 @@ def run_job(job: JobState, manifest: Manifest, eng=default_engine) -> None:
 
 
 def _run(job: JobState, manifest: Manifest, eng) -> None:
-    job.started_at = time.monotonic()
+    log_run_header(logger, {
+        "mode": job.mode, "model": job.model, "folder": str(job.folder),
+        "file_count": len(job.files), "cpu_threads": os.cpu_count(),
+    })
     job.phase = "downloading"
 
     def dl_progress(done: int, total: int) -> None:
@@ -34,6 +38,7 @@ def _run(job: JobState, manifest: Manifest, eng) -> None:
     model = eng.load_model(model_path)
     logger.info("effective compute type: %s", eng.effective_compute_type(model))
 
+    job.started_at = time.monotonic()
     job.phase = "transcribing"
     out_dir = job.folder / "transcripts"
     for i, fs in enumerate(job.files):

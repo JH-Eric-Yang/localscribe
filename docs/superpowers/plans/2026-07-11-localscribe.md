@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Dependencies: exactly `faster-whisper==1.2.1` and `nicegui>=3.14,<4`; dev-only `pytest>=8`. Never add torch, whisperx, ffmpeg packages, or tqdm (tqdm arrives transitively via faster-whisper).
+- Dependencies: exactly `faster-whisper==1.2.1` and `nicegui>=3.14,<4`; dev-only `pytest>=8`. Never add torch, whisperx, ffmpeg packages, or tqdm (tqdm arrives transitively via faster-whisper) (plus marker-scoped `onnxruntime` pins added in review to guarantee an Intel-Mac cp312 wheel — see pyproject.toml).
 - Python pinned `>=3.12,<3.13`; `.python-version` contains `3.12`.
 - Transcription uses **only** the sequential `WhisperModel.transcribe()` API — never `BatchedInferencePipeline` (it silently drops the temperature-fallback ladder).
 - Both modes keep the guard set: `beam_size=5`, `temperature=[0.0,0.2,0.4,0.6,0.8,1.0]`, `condition_on_previous_text=False`, `no_speech_threshold=0.6`, `log_prob_threshold=-1.0`, `compression_ratio_threshold=2.4`, `word_timestamps=True`.

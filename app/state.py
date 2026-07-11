@@ -63,7 +63,8 @@ class Manifest:
         if entry.get("mode") != mode or entry.get("model") != model:
             return False
         outputs = entry.get("outputs") or []
-        return bool(outputs) and all(Path(p).exists() for p in outputs)
+        transcripts_dir = self.path.parent.parent
+        return bool(outputs) and all((transcripts_dir / name).exists() for name in outputs)
 
     def _record(self, task: FileTask, mode: str, model: str, **extra) -> None:
         self.data[task.path.name] = {
@@ -73,8 +74,10 @@ class Manifest:
         self.save()
 
     def mark_done(self, task: FileTask, mode: str, model: str, outputs: list[Path]) -> None:
+        # Store filenames only (resolved against transcripts/ at read time) so
+        # moving or renaming the parent folder doesn't void resume state.
         self._record(task, mode, model, status="done",
-                     outputs=[str(p) for p in outputs], error=None)
+                     outputs=[p.name for p in outputs], error=None)
 
     def mark_failed(self, task: FileTask, mode: str, model: str, error: str) -> None:
         self._record(task, mode, model, status="failed", outputs=[], error=error)
