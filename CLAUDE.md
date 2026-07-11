@@ -4,14 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-This project provides a simple, easy-to-set-up interface around [WhisperX](https://github.com/m-bain/whisperX) for automatic audio transcription, aimed at **non-technical users** on both **Windows and macOS**.
+LocalScribe: a simple, easy-to-set-up local web app for batch audio/video transcription, aimed at **non-technical users** on both **Windows and macOS**. Users pick a folder, choose Verbatim or Non-verbatim mode, and every media file in the folder is transcribed to .srt/.vtt/.csv/.json.
+
+The full approved design is in `docs/superpowers/specs/2026-07-11-localscribe-design.md` — read it before making architectural changes.
 
 ## Current State
 
-The repository is empty — no code, build system, or tooling exists yet. This section should be replaced with real build/run/test commands and architecture notes as the project takes shape.
+Design approved, implementation not started. Replace this section with real build/run/test commands as the project takes shape.
 
 ## Design Constraints
 
-- **Audience is non-technical**: setup and everyday use must not require the command line, Python knowledge, or manual dependency management. Installation should be as close to one-click as possible.
-- **Cross-platform**: everything must work on both Windows and macOS. Avoid platform-specific solutions unless a per-platform equivalent is provided.
-- **WhisperX is the transcription engine**: WhisperX is a Python package with heavy dependencies (PyTorch, ffmpeg, CUDA on Windows/NVIDIA vs. CPU/MPS on macOS). Any packaging or environment-bootstrapping approach must handle these per-platform differences without user intervention.
+- **Audience is non-technical**: everyday use must not require the command line, Python knowledge, or manual dependency management. Setup is: `git clone` → double-click `Start Transcriber.command`/`.bat` → browser opens. The launchers self-bootstrap uv, a pinned CPython 3.12, and locked dependencies into a gitignored `.managed/` directory — no Python, no ffmpeg, no admin rights assumed on the user's machine.
+- **Cross-platform**: everything must work on Windows 10/11 and macOS (Intel + Apple Silicon), CPU-only.
+- **Engine is faster-whisper, NOT the `whisperx` package** (decided with the user 2026-07-11): whisperx requires system ffmpeg twice over (CLI + shared libs for torchcodec) and ~3 GB of torch/pyannote — incompatible with the no-admin setup. faster-whisper is whisperx's internal engine (identical quality) and decodes media via PyAV's bundled FFmpeg.
+- **Verbatim mode is load-bearing**: it relies on passing a filler-dense prompt as both `initial_prompt` and `hotwords` with `condition_on_previous_text=False` so faster-whisper injects it into every 30-s window. Both modes must use the sequential API — the batched pipeline silently drops the temperature-fallback ladder.
+- **No accounts/tokens ever**: models come from ungated Systran HuggingFace repos; no diarization.
