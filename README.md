@@ -42,6 +42,9 @@ uploaded anywhere. No accounts, no sign-ups.
 4. Click **Start transcription** and leave the laptop plugged in with the lid
    open. You can close the browser tab and come back — the work continues.
 
+Want to try it out first? Point it at the included `example_audio` (or
+`example_video`) folder — each contains a one-minute sample recording.
+
 When it finishes, click **Open output folder**. For each recording you get:
 
 | File | What it is |

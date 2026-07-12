@@ -8,7 +8,8 @@ __pycache__/
 .pytest_cache/
 .superpowers/
 
-# generated transcription outputs (keep the sample audio itself tracked)
-test_audio/transcripts/
+# generated transcription outputs (keep the sample media itself tracked)
+example_audio/transcripts/
+example_video/transcripts/
 docs/
 CLAUDE.md
