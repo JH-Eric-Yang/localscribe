@@ -1,0 +1,2 @@
+# localscribe
+Automatic verbatim transcription
