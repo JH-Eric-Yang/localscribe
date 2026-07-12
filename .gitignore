@@ -2,3 +2,11 @@
 .venv/
 __pycache__/
 *.pyc
+
+# local/testing clutter — not needed in the online repository
+.DS_Store
+.pytest_cache/
+.superpowers/
+
+# generated transcription outputs (keep the sample audio itself tracked)
+test_audio/transcripts/
