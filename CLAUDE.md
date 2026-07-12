@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 LocalScribe: a simple, easy-to-set-up local web app for batch audio/video transcription, aimed at **non-technical users** on both **Windows and macOS**. Users pick a folder, choose Verbatim or Non-verbatim mode, and every media file in the folder is transcribed to .srt/.vtt/.csv/.json.
 
-The full approved design is in `docs/superpowers/specs/2026-07-11-localscribe-design.md` — read it before making architectural changes.
+The full approved design is in `docs/superpowers/specs/2026-07-11-localscribe-design.md` — read it before making architectural changes. (The `docs/` folder is git-ignored and exists only on the original development machine; it is not in the public repository.)
 
 ## Current State
 

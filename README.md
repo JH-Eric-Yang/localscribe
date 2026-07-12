@@ -22,7 +22,7 @@ uploaded anywhere. No accounts, no sign-ups.
 3. **On a Mac:** double-click **`Start Transcriber.command`**.
    The first time, macOS may say it "cannot verify the developer":
    open **System Settings → Privacy & Security**, scroll down, and click
-   **Open Anyway**. (Screenshots in `docs/screenshots/`.)
+   **Open Anyway**.
    **On Windows:** double-click **`Start Transcriber.bat`**.
    If a blue "Windows protected your PC" box appears, click
    **More info → Run anyway**.
@@ -55,6 +55,6 @@ folder again — so it is always safe to re-run.
 
 ## Something not working?
 
-See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). The universal fix:
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md). The universal fix:
 **delete the `.managed` folder inside this folder, then double-click the
 launcher again.**

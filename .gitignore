@@ -10,3 +10,4 @@ __pycache__/
 
 # generated transcription outputs (keep the sample audio itself tracked)
 test_audio/transcripts/
+docs/
