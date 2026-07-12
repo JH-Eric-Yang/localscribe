@@ -3,6 +3,7 @@ import errno
 import logging
 import os
 import time
+from collections import Counter
 from datetime import datetime, timezone
 
 from app import APP_VERSION
@@ -24,6 +25,19 @@ def run_job(job: JobState, manifest: Manifest, eng=default_engine) -> None:
         job.phase = "done"
 
 
+def output_base_names(files) -> dict:
+    """Transcript base name per input file: the bare stem (interview.mp3 ->
+    interview.srt), unless two inputs share a stem (interview.mp3 +
+    interview.mp4) — those keep the full filename so their transcripts
+    cannot overwrite each other."""
+    stems = Counter(fs.task.path.stem for fs in files)
+    return {
+        fs.task.path.name:
+            fs.task.path.name if stems[fs.task.path.stem] > 1 else fs.task.path.stem
+        for fs in files
+    }
+
+
 def _run(job: JobState, manifest: Manifest, eng) -> None:
     log_run_header(logger, {
         "mode": job.mode, "model": job.model, "folder": str(job.folder),
@@ -41,6 +55,7 @@ def _run(job: JobState, manifest: Manifest, eng) -> None:
     job.started_at = time.monotonic()
     job.phase = "transcribing"
     out_dir = job.folder / "transcripts"
+    bases = output_base_names(job.files)
     for i, fs in enumerate(job.files):
         if job.cancel_requested:
             for rest in job.files[i:]:
@@ -53,14 +68,15 @@ def _run(job: JobState, manifest: Manifest, eng) -> None:
         job.current_index = i
         fs.status = "running"
         started = time.monotonic()
-        _process_with_disk_full_pause(job, fs, model, out_dir, manifest, eng)
+        _process_with_disk_full_pause(job, fs, model, out_dir,
+                                      bases[fs.task.path.name], manifest, eng)
         fs.elapsed = time.monotonic() - started
 
 
-def _process_with_disk_full_pause(job, fs: FileStatus, model, out_dir, manifest, eng):
+def _process_with_disk_full_pause(job, fs: FileStatus, model, out_dir, base, manifest, eng):
     while True:
         try:
-            _process_file(job, fs, model, out_dir, manifest, eng)
+            _process_file(job, fs, model, out_dir, base, manifest, eng)
             fs.status = "done"
             fs.progress = 1.0
             return
@@ -89,7 +105,7 @@ def _fail(job, fs: FileStatus, manifest: Manifest, exc: Exception) -> None:
     manifest.mark_failed(fs.task, job.mode, job.model, fs.error)
 
 
-def _process_file(job, fs: FileStatus, model, out_dir, manifest, eng) -> None:
+def _process_file(job, fs: FileStatus, model, out_dir, base, manifest, eng) -> None:
     seg_iter, info = eng.transcribe_file(model, fs.task.path, job.mode)
     duration = fs.task.duration or getattr(info, "duration", 0) or 0
     segments = []
@@ -107,5 +123,5 @@ def _process_file(job, fs: FileStatus, model, out_dir, manifest, eng) -> None:
         "app_version": APP_VERSION,
         "created_utc": datetime.now(timezone.utc).isoformat(),
     }
-    outputs = write_outputs(out_dir, fs.task.path.name, segments, meta)
+    outputs = write_outputs(out_dir, base, segments, meta)
     manifest.mark_done(fs.task, job.mode, job.model, outputs)

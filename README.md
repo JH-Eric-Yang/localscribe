@@ -46,9 +46,9 @@ When it finishes, click **Open output folder**. For each recording you get:
 
 | File | What it is |
 |---|---|
-| `recording.mp3.srt` / `.vtt` | Subtitle files (timestamps + text) |
-| `recording.mp3.csv` | Spreadsheet — opens in Excel, one row per sentence with times |
-| `recording.mp3.json` | Full detail including word-level timestamps |
+| `recording.srt` / `recording.vtt` | Subtitle files (timestamps + text) |
+| `recording.csv` | Spreadsheet — opens in Excel, one row per sentence with times |
+| `recording.json` | Full detail including word-level timestamps |
 
 Already-transcribed files are skipped automatically if you run the same
 folder again — so it is always safe to re-run.

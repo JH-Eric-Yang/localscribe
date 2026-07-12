@@ -45,5 +45,5 @@ def test_real_pipeline(tmp_path, mode):
     assert job.error_message is None
     assert job.files[0].status == "done"
     for ext in (".srt", ".vtt", ".csv", ".json"):
-        assert (tmp_path / "transcripts" / f"tone.wav{ext}").exists()
+        assert (tmp_path / "transcripts" / f"tone{ext}").exists()
     assert manifest.should_skip(scan.tasks[0], mode, "tiny")
