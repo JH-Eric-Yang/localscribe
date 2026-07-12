@@ -1,0 +1,11 @@
+example.mp4
+
+"How to start a movement" by Derek Sivers
+TED Talk, February 2010
+https://www.ted.com/talks/derek_sivers_how_to_start_a_movement
+
+Licensed under Creative Commons BY-NC-ND 4.0
+(https://creativecommons.org/licenses/by-nc-nd/4.0/)
+Included unmodified, for demonstration purposes only, per TED's Talk Usage
+Policy (https://www.ted.com/about/our-organization/our-policies-terms/ted-talks-usage-policy).
+This license applies to the video file only, not to the rest of this repository.
