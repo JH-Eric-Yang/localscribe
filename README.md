@@ -42,17 +42,28 @@ uploaded anywhere. No accounts, no sign-ups.
 4. Click **Start transcription** and leave the laptop plugged in with the lid
    open. You can close the browser tab and come back — the work continues.
 
-Want to try it out first? Point it at the included `example_audio` folder
-(a one-minute sample recording) or `example_video` (a short TED talk —
-see its ATTRIBUTION.txt).
+### Try it out first
 
-When it finishes, click **Open output folder**. For each recording you get:
+The download from GitHub already includes two sample folders you can point
+LocalScribe at straight away:
+
+- **`example_audio/`** — a one-minute sample recording (.wav)
+- **`example_video/`** — a short TED talk video (.mp4; see its
+  ATTRIBUTION.txt for credits)
+
+### What you get
+
+When it finishes, click **Open output folder**. Each transcript is named
+after the recording plus a tag showing how it was transcribed —
+`.clean` for Non-verbatim, `.verbatim` for Verbatim — so you can make both
+versions of the same recording without one overwriting the other:
 
 | File | What it is |
 |---|---|
-| `recording.srt` / `recording.vtt` | Subtitle files (timestamps + text) |
-| `recording.csv` | Spreadsheet — opens in Excel, one row per sentence with times |
-| `recording.json` | Full detail including word-level timestamps |
+| `recording.clean.srt` / `recording.clean.vtt` | Subtitle files (timestamps + text) |
+| `recording.clean.csv` | Spreadsheet — opens in Excel, one row per sentence with times |
+| `recording.clean.json` | Full detail including word-level timestamps |
+| `recording.verbatim.srt` … | The same four files, from Verbatim mode |
 
 Already-transcribed files are skipped automatically if you run the same
 folder again — so it is always safe to re-run.

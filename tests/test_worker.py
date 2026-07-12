@@ -66,8 +66,8 @@ def test_happy_path_writes_outputs_and_manifest(tmp_path):
     run_job(job, manifest, eng=FakeEngine())
     assert job.phase == "done" and job.error_message is None
     assert [fs.status for fs in job.files] == ["done", "done"]
-    assert (tmp_path / "transcripts" / "a.srt").exists()
-    assert (tmp_path / "transcripts" / "b.json").exists()
+    assert (tmp_path / "transcripts" / "a.clean.srt").exists()
+    assert (tmp_path / "transcripts" / "b.clean.json").exists()
     assert manifest.should_skip(job.files[0].task, "non_verbatim", "small")
 
 
@@ -76,14 +76,14 @@ def test_failure_is_isolated(tmp_path):
     run_job(job, Manifest(tmp_path), eng=FakeEngine(fail_names={"bad.mp3"}))
     assert [fs.status for fs in job.files] == ["done", "failed", "done"]
     assert "damaged" in job.files[1].error.lower()
-    assert (tmp_path / "transcripts" / "c.srt").exists()
+    assert (tmp_path / "transcripts" / "c.clean.srt").exists()
 
 
 def test_premarked_skips_are_untouched(tmp_path):
     job = make_job(tmp_path, ["a.mp3", "b.mp3"], statuses={"a.mp3": "skipped"})
     run_job(job, Manifest(tmp_path), eng=FakeEngine())
     assert [fs.status for fs in job.files] == ["skipped", "done"]
-    assert not (tmp_path / "transcripts" / "a.srt").exists()
+    assert not list((tmp_path / "transcripts").glob("a.*")) if (tmp_path / "transcripts").exists() else True
 
 
 def test_cancel_before_start_skips_everything(tmp_path):
@@ -135,7 +135,7 @@ def test_cancel_during_disk_full_pause_skips_without_retry(tmp_path):
     assert job.phase == "done"
     assert job.files[0].status == "skipped"
     assert eng.transcribe_calls.count("a.mp3") == 1  # not retried
-    assert not (tmp_path / "transcripts" / "a.srt").exists()
+    assert not list((tmp_path / "transcripts").glob("a.*")) if (tmp_path / "transcripts").exists() else True
 
 
 def test_colliding_stems_keep_full_names(tmp_path):
@@ -144,7 +144,20 @@ def test_colliding_stems_keep_full_names(tmp_path):
     job = make_job(tmp_path, ["interview.mp3", "interview.mp4", "solo.wav"])
     run_job(job, Manifest(tmp_path), eng=FakeEngine())
     out = tmp_path / "transcripts"
-    assert (out / "interview.mp3.srt").exists()
-    assert (out / "interview.mp4.srt").exists()
-    assert not (out / "interview.srt").exists()
-    assert (out / "solo.srt").exists()  # non-colliding file keeps the clean name
+    assert (out / "interview.mp3.clean.srt").exists()
+    assert (out / "interview.mp4.clean.srt").exists()
+    assert not (out / "interview.clean.srt").exists()
+    assert (out / "solo.clean.srt").exists()  # non-colliding file keeps the bare stem
+
+
+def test_mode_tag_differentiates_transcripts(tmp_path):
+    """Verbatim and clean transcripts of the same recording must not
+    overwrite each other — the mode is part of the output name."""
+    job = make_job(tmp_path, ["a.mp3"])
+    job.mode = "verbatim"
+    run_job(job, Manifest(tmp_path), eng=FakeEngine())
+    assert (tmp_path / "transcripts" / "a.verbatim.srt").exists()
+
+    job2 = make_job(tmp_path, ["b.mp3"])
+    run_job(job2, Manifest(tmp_path), eng=FakeEngine())  # default non_verbatim
+    assert (tmp_path / "transcripts" / "b.clean.srt").exists()

@@ -25,15 +25,21 @@ def run_job(job: JobState, manifest: Manifest, eng=default_engine) -> None:
         job.phase = "done"
 
 
-def output_base_names(files) -> dict:
-    """Transcript base name per input file: the bare stem (interview.mp3 ->
-    interview.srt), unless two inputs share a stem (interview.mp3 +
-    interview.mp4) — those keep the full filename so their transcripts
-    cannot overwrite each other."""
+# Mode tag baked into every transcript name, so verbatim and clean outputs of
+# the same recording coexist and are tellable apart at a glance.
+MODE_TAGS = {"non_verbatim": "clean", "verbatim": "verbatim"}
+
+
+def output_base_names(files, mode: str) -> dict:
+    """Transcript base name per input file: `<stem>.<mode tag>` (interview.mp3
+    -> interview.clean.srt / interview.verbatim.srt). When two inputs share a
+    stem (interview.mp3 + interview.mp4) both keep their full filename so
+    their transcripts cannot overwrite each other."""
+    tag = MODE_TAGS[mode]
     stems = Counter(fs.task.path.stem for fs in files)
     return {
         fs.task.path.name:
-            fs.task.path.name if stems[fs.task.path.stem] > 1 else fs.task.path.stem
+            f"{fs.task.path.name if stems[fs.task.path.stem] > 1 else fs.task.path.stem}.{tag}"
         for fs in files
     }
 
@@ -55,7 +61,7 @@ def _run(job: JobState, manifest: Manifest, eng) -> None:
     job.started_at = time.monotonic()
     job.phase = "transcribing"
     out_dir = job.folder / "transcripts"
-    bases = output_base_names(job.files)
+    bases = output_base_names(job.files, job.mode)
     for i, fs in enumerate(job.files):
         if job.cancel_requested:
             for rest in job.files[i:]:

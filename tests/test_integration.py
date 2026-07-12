@@ -44,6 +44,7 @@ def test_real_pipeline(tmp_path, mode):
     assert job.phase == "done", job.error_message
     assert job.error_message is None
     assert job.files[0].status == "done"
+    tag = "verbatim" if mode == "verbatim" else "clean"
     for ext in (".srt", ".vtt", ".csv", ".json"):
-        assert (tmp_path / "transcripts" / f"tone{ext}").exists()
+        assert (tmp_path / "transcripts" / f"tone.{tag}{ext}").exists()
     assert manifest.should_skip(scan.tasks[0], mode, "tiny")
