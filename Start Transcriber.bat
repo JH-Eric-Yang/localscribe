@@ -11,6 +11,8 @@ echo Starting LocalScribe - leave this window open while you transcribe.
 set "UV_PYTHON_INSTALL_DIR=%DIR%.managed\python"
 set "UV_CACHE_DIR=%DIR%.managed\uv-cache"
 set "HF_HOME=%DIR%.managed\hf-cache"
+rem classic HTTP downloads: resumable + stall-recoverable
+set "HF_HUB_DISABLE_XET=1"
 set "UV=%DIR%.managed\uv\uv.exe"
 
 "%UV%" --version >nul 2>&1

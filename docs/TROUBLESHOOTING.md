@@ -23,6 +23,10 @@ The first run needs internet access to `astral.sh`, `github.com`, and
 - Try again on a different network (home Wi-Fi or a phone hotspot). This is a
   **one-time** download; afterwards LocalScribe works offline.
 - Downloads resume where they left off — just double-click again.
+- If the download bar stops moving, leave it alone for a couple of minutes:
+  LocalScribe notices a stuck connection, reconnects by itself, and carries on
+  from where it stopped. If it gives up, press **Retry** — nothing already
+  downloaded is lost.
 
 ## It seems stuck / is it frozen?
 

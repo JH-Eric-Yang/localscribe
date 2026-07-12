@@ -78,6 +78,44 @@ def test_ensure_model_gives_up():
     assert "internet" in str(exc_info.value).lower()
 
 
+def test_xet_backend_disabled():
+    # The Xet download backend stalls irrecoverably inside native code on
+    # networks that throttle long-lived transfers (observed in the field);
+    # importing app.engine must force the resumable classic HTTP path.
+    import os
+
+    import app.engine  # noqa: F401
+
+    assert os.environ.get("HF_HUB_DISABLE_XET") == "1"
+
+
+def test_ensure_model_recovers_from_stalled_download():
+    """A download that goes quiet must be aborted by the stall watchdog and
+    retried — the retry resumes and succeeds instead of hanging forever."""
+    import threading
+
+    calls = []
+    aborts = []
+    unblock = threading.Event()
+
+    def abort():
+        aborts.append(1)
+        unblock.set()  # simulates close_session() making the blocked read raise
+
+    def stalling_download(repo, tqdm_class=None):
+        calls.append(repo)
+        if len(calls) == 1:
+            assert unblock.wait(timeout=10), "watchdog never aborted the stall"
+            raise ConnectionError("connection force-closed")
+        return "/fake/path"
+
+    path = ensure_model("small", download=stalling_download, sleep=lambda s: None,
+                        stall_seconds=0.2, abort_stalled=abort)
+    assert path == "/fake/path"
+    assert len(calls) == 2
+    assert len(aborts) >= 1
+
+
 def test_progress_callback_only_fires_for_byte_bars():
     """huggingface_hub drives both byte-unit download bars and a file-count
     bar through the same tqdm_class; only the byte bars should reach the UI

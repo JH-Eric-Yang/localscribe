@@ -11,6 +11,7 @@ echo "Starting LocalScribe — leave this window open while you transcribe."
 export UV_PYTHON_INSTALL_DIR="$DIR/.managed/python"
 export UV_CACHE_DIR="$DIR/.managed/uv-cache"
 export HF_HOME="$DIR/.managed/hf-cache"
+export HF_HUB_DISABLE_XET=1  # classic HTTP downloads: resumable + stall-recoverable
 
 UV="$DIR/.managed/uv/uv"
 

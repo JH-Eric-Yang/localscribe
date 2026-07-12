@@ -3,8 +3,25 @@
 Sequential API only — BatchedInferencePipeline silently drops the temperature
 fallback ladder (verified against faster-whisper source during design review).
 """
+import logging
+import os
+import threading
 import time
 from pathlib import Path
+
+# The Xet download backend stalls irrecoverably inside native code on networks
+# that throttle long-lived transfers; the classic HTTP path supports byte-range
+# resume and its stuck connections can be dropped and retried (see ensure_model's
+# stall watchdog). Must be set before huggingface_hub is first imported.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
+logger = logging.getLogger("localscribe")
+
+# No download progress for this long -> drop the connection and resume. Progress
+# arrives in 10 MB chunks (huggingface_hub's DOWNLOAD_CHUNK_SIZE), so a healthy
+# but slow link still reports within this window; a throttled-to-a-trickle
+# connection is better killed and resumed than left to crawl forever.
+DOWNLOAD_STALL_SECONDS = 90
 
 MODEL_REPOS = {
     "tiny": "Systran/faster-whisper-tiny",  # not offered in the UI; used by tests
@@ -78,22 +95,68 @@ def _progress_tqdm(progress_cb):
     return UITqdm
 
 
-def ensure_model(size: str, progress_cb=None, retries: int = 3,
-                 download=None, sleep=time.sleep) -> str:
+def _abort_stalled_download():
+    """Force-close huggingface_hub's shared HTTP client. The blocked body read
+    inside the download raises immediately, and the next request transparently
+    gets a fresh client — turning a silent hang into a resumable error."""
+    try:
+        from huggingface_hub.utils import close_session
+        close_session()
+    except Exception:
+        logger.exception("could not close the download session")
+
+
+def ensure_model(size: str, progress_cb=None, retries: int = 5,
+                 download=None, sleep=time.sleep,
+                 stall_seconds: float = DOWNLOAD_STALL_SECONDS,
+                 abort_stalled=None) -> str:
     if download is None:
         from huggingface_hub import snapshot_download
         download = snapshot_download
-    last_exc = None
-    for attempt in range(retries):
-        try:
-            return download(MODEL_REPOS[size], tqdm_class=_progress_tqdm(progress_cb))
-        except Exception as exc:  # snapshot_download resumes partial downloads on retry
-            last_exc = exc
-            sleep(2 ** attempt)
-    raise ModelDownloadError(
-        "Could not download the speech model — you need internet the first time. "
-        "If you are on a university network, a proxy may be blocking huggingface.co."
-    ) from last_exc
+    if abort_stalled is None:
+        abort_stalled = _abort_stalled_download
+
+    last_progress = [time.monotonic()]
+
+    def on_progress(done, total):
+        last_progress[0] = time.monotonic()
+        if progress_cb:
+            progress_cb(done, total)
+
+    # Watchdog: a throttled connection can trickle bytes forever without ever
+    # tripping a socket timeout (observed in the field: downloads freezing
+    # mid-file with no exception). If no progress arrives for stall_seconds,
+    # drop the connection so the attempt fails fast and the retry below
+    # resumes from the bytes already on disk.
+    finished = threading.Event()
+
+    def watchdog():
+        while not finished.wait(max(stall_seconds / 4, 0.05)):
+            if time.monotonic() - last_progress[0] > stall_seconds:
+                logger.warning(
+                    "model download made no progress for %.0fs — dropping the "
+                    "connection to force a resume", stall_seconds)
+                last_progress[0] = time.monotonic()
+                abort_stalled()
+
+    threading.Thread(target=watchdog, daemon=True).start()
+    try:
+        last_exc = None
+        for attempt in range(retries):
+            last_progress[0] = time.monotonic()
+            try:
+                return download(MODEL_REPOS[size],
+                                tqdm_class=_progress_tqdm(on_progress))
+            except Exception as exc:  # download resumes partial files on retry
+                last_exc = exc
+                if attempt < retries - 1:
+                    sleep(2 ** min(attempt, 3))
+        raise ModelDownloadError(
+            "Could not download the speech model — you need internet the first time. "
+            "If you are on a university network, a proxy may be blocking huggingface.co."
+        ) from last_exc
+    finally:
+        finished.set()
 
 
 def load_model(model_path: str):
