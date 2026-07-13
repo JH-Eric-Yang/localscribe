@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from app import APP_VERSION
 from app import engine as default_engine
+from app import gpu
 from app.diagnostics import categorize_error, log_run_header
 from app.state import FileStatus, JobState, Manifest
 from app.writers import write_outputs
@@ -45,9 +46,11 @@ def output_base_names(files, mode: str) -> dict:
 
 
 def _run(job: JobState, manifest: Manifest, eng) -> None:
+    use_gpu = gpu.enabled()
     log_run_header(logger, {
         "mode": job.mode, "model": job.model, "folder": str(job.folder),
         "file_count": len(job.files), "cpu_threads": os.cpu_count(),
+        "gpu_enabled": use_gpu,
     })
     job.phase = "downloading"
 
@@ -55,8 +58,12 @@ def _run(job: JobState, manifest: Manifest, eng) -> None:
         job.download_done, job.download_total = done, total
 
     model_path = eng.ensure_model(job.model, progress_cb=dl_progress)
-    model = eng.load_model(model_path)
-    logger.info("effective compute type: %s", eng.effective_compute_type(model))
+    model, device = eng.load_model(model_path, use_gpu=use_gpu)
+    logger.info("device: %s, effective compute type: %s",
+                device, eng.effective_compute_type(model))
+    if use_gpu and device == "cpu":
+        job.device_notice = "GPU not available — using CPU."
+        logger.warning("GPU mode is on but CUDA is not usable — using CPU")
 
     job.started_at = time.monotonic()
     job.phase = "transcribing"

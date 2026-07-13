@@ -25,8 +25,11 @@ class FakeEngine:
             progress_cb(484, 484)
         return "/fake/model"
 
-    def load_model(self, path):
-        return object()
+    def load_model(self, path, use_gpu=False):
+        self.load_calls = getattr(self, "load_calls", [])
+        self.load_calls.append(use_gpu)
+        return object(), ("cuda" if use_gpu and getattr(self, "has_gpu", False)
+                          else "cpu")
 
     def effective_compute_type(self, model):
         return "int8"
@@ -161,3 +164,31 @@ def test_mode_tag_differentiates_transcripts(tmp_path):
     job2 = make_job(tmp_path, ["b.mp3"])
     run_job(job2, Manifest(tmp_path), eng=FakeEngine())  # default non_verbatim
     assert (tmp_path / "transcripts" / "b.clean.srt").exists()
+
+
+def test_gpu_enabled_but_unusable_sets_notice(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.gpu.enabled", lambda *a, **k: True)
+    job = make_job(tmp_path, ["a.mp3"])
+    eng = FakeEngine()  # has_gpu unset -> load_model reports "cpu"
+    run_job(job, Manifest(tmp_path), eng=eng)
+    assert eng.load_calls == [True]
+    assert job.device_notice == "GPU not available — using CPU."
+    assert job.files[0].status == "done"  # fallback, never a failure
+
+
+def test_gpu_working_leaves_no_notice(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.gpu.enabled", lambda *a, **k: True)
+    job = make_job(tmp_path, ["a.mp3"])
+    eng = FakeEngine()
+    eng.has_gpu = True
+    run_job(job, Manifest(tmp_path), eng=eng)
+    assert job.device_notice is None
+
+
+def test_gpu_disabled_leaves_no_notice(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.gpu.enabled", lambda *a, **k: False)
+    job = make_job(tmp_path, ["a.mp3"])
+    eng = FakeEngine()
+    run_job(job, Manifest(tmp_path), eng=eng)
+    assert eng.load_calls == [False]
+    assert job.device_notice is None

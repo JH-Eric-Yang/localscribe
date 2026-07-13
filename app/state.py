@@ -33,6 +33,7 @@ class JobState:
         self.started_at: float | None = None
         self.message = ""
         self.error_message: str | None = None
+        self.device_notice: str | None = None
 
 
 class Manifest:

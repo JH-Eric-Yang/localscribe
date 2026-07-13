@@ -111,3 +111,8 @@ def test_jobstate_defaults():
     assert job.phase == "idle"
     assert job.files == [] and job.cancel_requested is False
     assert not job.resume_event.is_set()
+
+
+def test_jobstate_device_notice_defaults_none():
+    from app.state import JobState
+    assert JobState().device_notice is None
