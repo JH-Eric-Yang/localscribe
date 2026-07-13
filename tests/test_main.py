@@ -28,3 +28,21 @@ def test_existing_instance_bad_lockfile(tmp_path):
     assert existing_instance_port(lock) is None      # missing file
     lock.write_text("not-a-port")
     assert existing_instance_port(lock) is None      # garbage content
+
+
+def test_exit_code_default_zero(monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, "_restart_requested", False)
+    assert main.exit_code() == 0
+
+
+def test_request_restart_yields_exit_code_42(monkeypatch):
+    from app import main
+    monkeypatch.setattr(main, "_restart_requested", False)
+    shutdowns = []
+    import nicegui
+    monkeypatch.setattr(nicegui.app, "shutdown", lambda: shutdowns.append(1))
+    main.request_restart()
+    assert main.exit_code() == 42          # launcher loop re-runs uv on 42
+    assert shutdowns == [1]                 # the app actually closes
+    main._restart_requested = False         # don't leak state to other tests
