@@ -46,6 +46,19 @@ The setup tool (`uv.exe`) is a well-known open-source program from
 astral.sh. If your antivirus quarantined it, restore it or just delete
 `.managed` and re-run — setup detects the damage and re-downloads.
 
+## The GPU option downloaded but transcription says "GPU not available — using CPU."
+
+Your graphics card drivers may be out of date — update them from nvidia.com
+(or GeForce Experience) and restart the computer. Transcription still works
+on CPU in the meantime. If it keeps happening, untick "Use NVIDIA graphics
+card": nothing else changes.
+
+## "Your graphics card ran out of memory" on some files.
+
+The chosen accuracy level needs more graphics card memory than you have.
+Pick a lower accuracy level, or untick "Use NVIDIA graphics card" and re-run
+— the failed files will be picked up again.
+
 ## Where are the logs? (for emailing support)
 
 `.managed/logs/bootstrap.log` (setup) and `.managed/logs/app.log` (the app).

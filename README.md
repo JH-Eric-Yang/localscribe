@@ -68,6 +68,18 @@ versions of the same recording without one overwriting the other:
 Already-transcribed files are skipped automatically if you run the same
 folder again — so it is always safe to re-run.
 
+## Using an NVIDIA graphics card (Windows, optional)
+
+If your Windows computer has an NVIDIA graphics card, transcription can run
+much faster. Tick **"Use NVIDIA graphics card"** on the setup screen — the
+app downloads the extra support files (about 1.5 GB, one time) and restarts
+itself. If the graphics card is ever unavailable, LocalScribe automatically
+falls back to the normal (CPU) mode and tells you, so transcription always
+works. Unticking the box switches back to CPU immediately.
+
+This option only appears on Windows computers with an NVIDIA graphics card.
+Macs don't support this and don't need any changes.
+
 ## Something not working?
 
 See [TROUBLESHOOTING.md](TROUBLESHOOTING.md). The universal fix:
