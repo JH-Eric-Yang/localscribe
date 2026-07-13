@@ -159,13 +159,22 @@ def ensure_model(size: str, progress_cb=None, retries: int = 5,
         finished.set()
 
 
-def load_model(model_path: str):
-    import os
-
+def load_model(model_path: str, use_gpu: bool = False):
+    """Returns (model, device). The CUDA branch can fail for reasons only
+    discoverable at load time (driver/library mismatch), so any failure
+    falls back to the CPU path — a job never fails because GPU mode is on."""
     from faster_whisper import WhisperModel
+
+    from app import gpu
+    if use_gpu and gpu.cuda_usable():
+        try:
+            return WhisperModel(model_path, device="cuda",
+                                compute_type="float16"), "cuda"
+        except Exception:
+            logger.exception("CUDA model load failed — falling back to CPU")
     cpu_threads = max(1, (os.cpu_count() or 4) - 1)
     return WhisperModel(model_path, device="cpu", compute_type="int8",
-                        cpu_threads=cpu_threads)
+                        cpu_threads=cpu_threads), "cpu"
 
 
 def effective_compute_type(model) -> str:

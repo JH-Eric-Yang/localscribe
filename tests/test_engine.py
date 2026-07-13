@@ -147,3 +147,66 @@ def test_segment_to_dict():
                  "words": [{"word": " um,", "start": 1.0, "end": 1.2, "probability": 0.9}]}
     S.words = None
     assert segment_to_dict(S())["words"] == []
+
+
+class _RecordingModel:
+    """Stands in for faster_whisper.WhisperModel; records ctor kwargs."""
+    instances: list = []
+
+    def __init__(self, path, **kwargs):
+        self.kwargs = kwargs
+        _RecordingModel.instances.append(self)
+
+
+def _patch_whisper_model(monkeypatch, cls=_RecordingModel):
+    import faster_whisper
+    cls.instances = []
+    monkeypatch.setattr(faster_whisper, "WhisperModel", cls)
+
+
+def test_load_model_cpu_by_default(monkeypatch):
+    from app.engine import load_model
+    _patch_whisper_model(monkeypatch)
+    model, device = load_model("/fake/model")
+    assert device == "cpu"
+    assert model.kwargs["device"] == "cpu"
+    assert model.kwargs["compute_type"] == "int8"
+    assert model.kwargs["cpu_threads"] >= 1
+
+
+def test_load_model_gpu_requested_but_unusable_falls_back(monkeypatch):
+    from app import gpu
+    from app.engine import load_model
+    _patch_whisper_model(monkeypatch)
+    monkeypatch.setattr(gpu, "cuda_usable", lambda: False)
+    model, device = load_model("/fake/model", use_gpu=True)
+    assert device == "cpu"
+    assert model.kwargs["device"] == "cpu"
+
+
+def test_load_model_uses_cuda_when_usable(monkeypatch):
+    from app import gpu
+    from app.engine import load_model
+    _patch_whisper_model(monkeypatch)
+    monkeypatch.setattr(gpu, "cuda_usable", lambda: True)
+    model, device = load_model("/fake/model", use_gpu=True)
+    assert device == "cuda"
+    assert model.kwargs["device"] == "cuda"
+    assert model.kwargs["compute_type"] == "float16"
+
+
+def test_load_model_cuda_load_failure_falls_back_to_cpu(monkeypatch):
+    from app import gpu
+    from app.engine import load_model
+
+    class ExplodingOnCuda(_RecordingModel):
+        def __init__(self, path, **kwargs):
+            if kwargs.get("device") == "cuda":
+                raise RuntimeError("CUDA driver version is insufficient")
+            super().__init__(path, **kwargs)
+
+    _patch_whisper_model(monkeypatch, ExplodingOnCuda)
+    monkeypatch.setattr(gpu, "cuda_usable", lambda: True)
+    model, device = load_model("/fake/model", use_gpu=True)
+    assert device == "cpu"
+    assert model.kwargs["device"] == "cpu"
