@@ -1,4 +1,5 @@
 """Directory-only picker dialog, adapted from NiceGUI's local_file_picker example."""
+import os
 from pathlib import Path
 
 from nicegui import events, ui
@@ -12,6 +13,33 @@ def list_subdirectories(path: Path) -> list[Path]:
         )
     except PermissionError:
         return []
+
+
+def list_drives() -> list[Path]:
+    """All drive roots (C:\\, D:\\, mapped network drives). os.listdrives
+    exists only on Windows (3.12+), so this is [] on macOS/Linux."""
+    lister = getattr(os, "listdrives", None)
+    if lister is None:
+        return []
+    try:
+        return [Path(d) for d in lister()]
+    except OSError:
+        return []
+
+
+def picker_rows(current: Path) -> list[dict]:
+    rows = []
+    if current.parent != current:
+        rows.append({"name": "⬆ ..", "path": str(current.parent)})
+    else:
+        # A drive root has no ".." (C:\ is its own parent), and on Windows
+        # each drive is a separate root — without these rows the picker
+        # would trap users on the drive they started on.
+        rows += [{"name": f"💽 {d}", "path": str(d)}
+                 for d in list_drives() if d != current]
+    rows += [{"name": f"\U0001f4c1 {p.name}", "path": str(p)}
+             for p in list_subdirectories(current)]
+    return rows
 
 
 class FolderPicker(ui.dialog):
@@ -32,13 +60,8 @@ class FolderPicker(ui.dialog):
         self._refresh()
 
     def _refresh(self) -> None:
-        rows = []
-        if self.current.parent != self.current:
-            rows.append({"name": "⬆ ..", "path": str(self.current.parent)})
-        rows += [{"name": f"\U0001f4c1 {p.name}", "path": str(p)}
-                 for p in list_subdirectories(self.current)]
         self.path_label.text = str(self.current)
-        self.grid.options["rowData"] = rows
+        self.grid.options["rowData"] = picker_rows(self.current)
         self.grid.update()
 
     def _descend(self, e: events.GenericEventArguments) -> None:
