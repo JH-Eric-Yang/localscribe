@@ -14,6 +14,16 @@ dependencies = [
     "onnxruntime==1.27.0; platform_system != 'Darwin' or platform_machine != 'x86_64'",
 ]
 
+[project.optional-dependencies]
+# GPU mode (Windows-only, opt-in). ctranslate2's Windows wheel already
+# contains its CUDA code; these are the runtime libraries it loads lazily.
+# ctranslate2 4.x needs cuDNN 9 specifically. Downloaded only when the
+# launcher passes --extra cuda (flag file .managed/gpu-enabled exists).
+cuda = [
+    "nvidia-cublas-cu12; platform_system == 'Windows'",
+    "nvidia-cudnn-cu12>=9,<10; platform_system == 'Windows'",
+]
+
 [dependency-groups]
 dev = ["pytest>=8"]
 
