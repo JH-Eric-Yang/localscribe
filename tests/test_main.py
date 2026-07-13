@@ -30,19 +30,11 @@ def test_existing_instance_bad_lockfile(tmp_path):
     assert existing_instance_port(lock) is None      # garbage content
 
 
-def test_exit_code_default_zero(monkeypatch):
-    from app import main
-    monkeypatch.setattr(main, "_restart_requested", False)
-    assert main.exit_code() == 0
-
-
-def test_request_restart_yields_exit_code_42(monkeypatch):
-    from app import main
-    monkeypatch.setattr(main, "_restart_requested", False)
-    shutdowns = []
-    import nicegui
-    monkeypatch.setattr(nicegui.app, "shutdown", lambda: shutdowns.append(1))
-    main.request_restart()
-    assert main.exit_code() == 42          # launcher loop re-runs uv on 42
-    assert shutdowns == [1]                 # the app actually closes
-    main._restart_requested = False         # don't leak state to other tests
+def test_restart_state_not_in_entry_module():
+    """app/main.py runs as BOTH __main__ (via python -m) and app.main (via
+    ui's import) — two module objects. Restart state must therefore live in
+    a module that is only ever imported canonically (app.gpu), never in the
+    entry module, or the exit-42 contract silently breaks."""
+    import app.main
+    assert not hasattr(app.main, "_restart_requested")
+    assert not hasattr(app.main, "request_restart")

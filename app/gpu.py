@@ -15,6 +15,28 @@ logger = logging.getLogger("localscribe")
 
 FLAG_PATH = Path(__file__).resolve().parent.parent / ".managed" / "gpu-enabled"
 
+# Restart state lives here, NOT in app/main.py. app/main.py runs as module
+# __main__ (launched via `python -m app.main`) AND gets imported a second
+# time as canonical `app.main` (by app/ui.py's `from app import main`) —
+# two separate module objects, two separate globals. A flag set on one is
+# invisible to the other, so main()'s exit-code check would always see the
+# untouched copy. app/gpu.py is only ever imported canonically, so state
+# set here is visible everywhere.
+_restart_requested = False
+
+
+def request_restart() -> None:
+    """First GPU enable: exit code 42 tells the launcher loop to re-run
+    uv (now with --extra cuda), which downloads the wheels and restarts."""
+    global _restart_requested
+    _restart_requested = True
+    from nicegui import app as nicegui_app
+    nicegui_app.shutdown()
+
+
+def exit_code() -> int:
+    return 42 if _restart_requested else 0
+
 
 def nvidia_driver_present() -> bool:
     """Gates showing the GPU checkbox. Every NVIDIA driver install puts
@@ -43,10 +65,22 @@ def cuda_deps_installed() -> bool:
         return False
 
 
+_dll_dirs_registered = False
+
+
 def _add_dll_dirs() -> None:
     """Register the nvidia wheels' DLL directories. ctranslate2 loads
     cuBLAS/cuDNN lazily via LoadLibrary, which honours add_dll_directory
-    and PATH — set both (belt and braces)."""
+    and PATH — set both (belt and braces).
+
+    Guarded by a module-level flag: cuda_usable() runs once per job, and
+    without the guard every job would prepend the same directories to PATH
+    again, growing it without bound over a long-running process. The flag
+    is only set on success, so a failed probe (wheels not yet installed)
+    doesn't block a later successful registration once they are."""
+    global _dll_dirs_registered
+    if _dll_dirs_registered:
+        return
     import nvidia.cublas
     import nvidia.cudnn
     for pkg in (nvidia.cublas, nvidia.cudnn):
@@ -57,6 +91,7 @@ def _add_dll_dirs() -> None:
                 if hasattr(os, "add_dll_directory"):  # Windows only
                     os.add_dll_directory(str(d))
                 os.environ["PATH"] = str(d) + os.pathsep + os.environ.get("PATH", "")
+    _dll_dirs_registered = True
 
 
 def cuda_usable() -> bool:

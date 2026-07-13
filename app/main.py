@@ -7,21 +7,6 @@ from pathlib import Path
 MANAGED_DIR = Path(__file__).resolve().parent.parent / ".managed"
 LOCK_PATH = MANAGED_DIR / "app.lock"
 
-_restart_requested = False
-
-
-def request_restart() -> None:
-    """First GPU enable: exit code 42 tells the launcher loop to re-run
-    uv (now with --extra cuda), which downloads the wheels and restarts."""
-    global _restart_requested
-    _restart_requested = True
-    from nicegui import app as nicegui_app
-    nicegui_app.shutdown()
-
-
-def exit_code() -> int:
-    return 42 if _restart_requested else 0
-
 
 def _port_in_use(port: int) -> bool:
     with socket.socket() as s:
@@ -65,7 +50,8 @@ def main() -> None:
     from nicegui import ui
     ui.run(host="127.0.0.1", port=port, reload=False, show=True,
            title="LocalScribe", favicon="🎙️")
-    sys.exit(exit_code())
+    from app import gpu
+    sys.exit(gpu.exit_code())
 
 
 if __name__ in {"__main__", "__mp_main__"}:

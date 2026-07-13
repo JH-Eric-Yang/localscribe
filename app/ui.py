@@ -8,7 +8,6 @@ from pathlib import Path
 from nicegui import app as nicegui_app
 from nicegui import ui
 
-from app import main as app_main
 from app import gpu, worker
 from app.awake import keep_awake
 from app.discovery import ScanResult, scan_folder
@@ -240,7 +239,7 @@ def index() -> None:
                                       on_click=lambda: dialog.submit(False)) \
                                 .props("flat")
                     if await dialog and set_gpu_flag(True):
-                        app_main.request_restart()
+                        gpu.request_restart()
                     else:
                         gpu_checkbox.value = False
 
