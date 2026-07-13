@@ -8,7 +8,8 @@ from pathlib import Path
 from nicegui import app as nicegui_app
 from nicegui import ui
 
-from app import worker
+from app import main as app_main
+from app import gpu, worker
 from app.awake import keep_awake
 from app.discovery import ScanResult, scan_folder
 from app.folder_picker import FolderPicker
@@ -73,6 +74,7 @@ def start_job() -> None:
                                     status="skipped" if skipped else "queued"))
     job.cancel_requested = False
     job.error_message = None
+    job.device_notice = None
     job.message = ""
     job.phase = "downloading"
     threading.Thread(target=_job_thread, daemon=True).start()
@@ -87,6 +89,7 @@ def retry_job() -> None:
             fs.error = None
     job.cancel_requested = False
     job.error_message = None
+    job.device_notice = None
     job.phase = "downloading"
     threading.Thread(target=_job_thread, daemon=True).start()
 
@@ -203,6 +206,48 @@ def index() -> None:
             ui.label("The first run downloads a speech model (about 0.5 GB for "
                      "Standard, one time only). Keep the laptop plugged in with the "
                      "lid open during transcription.").classes("text-xs text-gray-500")
+            if gpu.nvidia_driver_present():
+                def set_gpu_flag(on: bool) -> bool:
+                    try:
+                        gpu.set_enabled(on)
+                        return True
+                    except OSError:
+                        logger.exception("could not write the GPU flag file")
+                        ui.notify("Could not save the graphics card setting — "
+                                  "see the log file.", type="warning")
+                        return False
+
+                async def on_gpu_toggle(e) -> None:
+                    if not e.value:
+                        set_gpu_flag(False)
+                        return
+                    if gpu.cuda_deps_installed():
+                        # Wheels already on disk (previously enabled):
+                        # takes effect at the next job, no restart.
+                        if not set_gpu_flag(True):
+                            gpu_checkbox.value = False
+                        return
+                    with ui.dialog() as dialog, ui.card():
+                        ui.label("LocalScribe needs to download graphics card "
+                                 "support (about 1.5 GB, one time). It will "
+                                 "restart now — this window will close and "
+                                 "reopen by itself.")
+                        with ui.row():
+                            ui.button("Download and restart",
+                                      on_click=lambda: dialog.submit(True)) \
+                                .props("color=primary")
+                            ui.button("Cancel",
+                                      on_click=lambda: dialog.submit(False)) \
+                                .props("flat")
+                    if await dialog and set_gpu_flag(True):
+                        app_main.request_restart()
+                    else:
+                        gpu_checkbox.value = False
+
+                gpu_checkbox = ui.checkbox(
+                    "Use NVIDIA graphics card — much faster "
+                    "(one-time 1.5 GB download)",
+                    value=gpu.enabled(), on_change=on_gpu_toggle)
             start_btn = ui.button("Start transcription", on_click=on_start) \
                 .props("size=lg color=primary")
             start_btn.disable()
@@ -255,6 +300,8 @@ def index() -> None:
                         .classes("text-sm text-gray-500")
                     ui.button("Stop after current file", on_click=request_cancel) \
                         .props("flat color=negative")
+                if job.device_notice:
+                    ui.label(job.device_notice).classes("text-sm text-warning")
                 render_file_rows()
 
         def render_file_rows() -> None:
@@ -293,6 +340,8 @@ def index() -> None:
                     if job.message:
                         summary += f" {job.message}"
                     ui.label(summary).classes(f"text-lg {color}")
+                    if job.device_notice:
+                        ui.label(job.device_notice).classes("text-sm text-warning")
                 render_file_rows()
                 with ui.row():
                     if job.folder:
