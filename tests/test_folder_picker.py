@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 
 from app import folder_picker
-from app.folder_picker import list_drives, list_subdirectories, picker_rows
+from app.folder_picker import (default_directory, list_drives,
+                               list_subdirectories, picker_rows)
 
 
 def test_list_subdirectories(tmp_path):
@@ -19,6 +20,15 @@ def test_list_subdirectories_permission_error(tmp_path, monkeypatch):
         raise PermissionError()
     monkeypatch.setattr(type(tmp_path), "iterdir", boom)
     assert list_subdirectories(tmp_path) == []
+
+
+def test_default_directory_is_the_apps_own_folder():
+    # Browse… starts where the user put LocalScribe (recordings often live
+    # next to it), not in the home directory.
+    root = default_directory()
+    assert (root / "app").is_dir()
+    assert (root / "pyproject.toml").is_file()
+    assert root.is_absolute()
 
 
 def test_list_drives_empty_without_os_support():

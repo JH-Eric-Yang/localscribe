@@ -15,6 +15,12 @@ def list_subdirectories(path: Path) -> list[Path]:
         return []
 
 
+def default_directory() -> Path:
+    """Where Browse… starts: the LocalScribe folder itself — users tend to
+    keep their recordings next to the app, not in the home directory."""
+    return Path(__file__).resolve().parent.parent
+
+
 def list_drives() -> list[Path]:
     """All drive roots (C:\\, D:\\, mapped network drives). os.listdrives
     exists only on Windows (3.12+), so this is [] on macOS/Linux."""
@@ -43,9 +49,10 @@ def picker_rows(current: Path) -> list[dict]:
 
 
 class FolderPicker(ui.dialog):
-    def __init__(self, directory: str = "~") -> None:
+    def __init__(self, directory: str | None = None) -> None:
         super().__init__()
-        self.current = Path(directory).expanduser().resolve()
+        self.current = (Path(directory).expanduser().resolve() if directory
+                        else default_directory())
         with self, ui.card().classes("w-[28rem]"):
             ui.label("Double-click a folder to open it").classes("text-sm text-gray-500")
             self.path_label = ui.label(str(self.current)).classes("font-mono text-xs")

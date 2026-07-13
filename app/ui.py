@@ -120,7 +120,7 @@ job_redo_flag = {"redo": False}
 @ui.page("/")
 def index() -> None:
     async def pick_folder() -> None:
-        result = await FolderPicker("~")
+        result = await FolderPicker()
         if result:
             choose_folder(result)
 
