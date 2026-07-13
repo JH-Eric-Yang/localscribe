@@ -34,7 +34,16 @@ tar -xf "%TEMP%\uv.zip" -C "%DIR%.managed\uv" >>"%DIR%.managed\logs\bootstrap.lo
 if errorlevel 1 goto fail
 
 :run
-"%UV%" run --project "%DIR%." --frozen python -m app.main
+rem GPU mode opt-in: the app creates .managed\gpu-enabled; the cuda extra
+rem (nvidia wheels, ~1.5 GB) is downloaded by uv only when it is present.
+set "EXTRA="
+if exist "%DIR%.managed\gpu-enabled" set "EXTRA=--extra cuda"
+"%UV%" run --project "%DIR%." --frozen %EXTRA% python -m app.main
+rem Exit code 42 = app asked for a restart (first GPU enable): re-check the
+rem flag and run again. "if errorlevel N" is true for exit codes >= N, so
+rem test 43 (fail) before 42 (loop) before 1 (fail).
+if errorlevel 43 goto fail
+if errorlevel 42 goto run
 if errorlevel 1 goto fail
 exit /b 0
 
