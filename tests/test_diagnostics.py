@@ -24,6 +24,16 @@ def test_categorize_generic_points_to_log():
     assert "log" in categorize_error(RuntimeError("boom")).lower()
 
 
+def test_cuda_oom_gets_friendly_gpu_message():
+    exc = RuntimeError(
+        "CUDA failed with error out of memory (cudaMalloc returned 2)")
+    msg = categorize_error(exc)
+    assert "graphics card" in msg
+    assert "untick" in msg.lower()
+    # a CPU MemoryError must NOT get the GPU message
+    assert "graphics card" not in categorize_error(MemoryError())
+
+
 def test_setup_logging_and_header(tmp_path):
     logger = setup_logging(tmp_path)
     log_run_header(logger, {"mode": "verbatim", "model": "small"})

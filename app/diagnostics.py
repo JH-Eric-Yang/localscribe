@@ -29,6 +29,9 @@ def categorize_error(exc: Exception) -> str:
         return "This file is too large for this computer's memory."
     text = str(exc).lower()
     root_module = exc.__class__.__module__.split(".")[0]
+    if "cuda" in text and "out of memory" in text:
+        return ("Your graphics card ran out of memory — untick "
+                "'Use NVIDIA graphics card' and re-run this file.")
     if root_module == "av" or "invalid data" in text or "moov atom" in text:
         return "This file appears to be damaged or in an unsupported format."
     return "Something went wrong with this file — see the log for details."
